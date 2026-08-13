@@ -1,97 +1,68 @@
+// packages
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
-import 'theme_model.dart';
-import 'theme_screen.dart';
+// screens
+import 'screens/home_screen.dart';
+import 'screens/settings_screen.dart';
 
-void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => ThemeModel(),
-      child: const MyApp(),
-    ),
-  );
+// providers
+import 'providers/theme_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setPreferredOrientations(
+    [DeviceOrientation.portraitUp],
+  ).then((_) async {
+    await dotenv.load(fileName: 'assets/.env');
+    runApp(const MallariAdvMobProg());
+  });
 }
 
-/// This is the root widget of the application.
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MallariAdvMobProg extends StatelessWidget {
+  const MallariAdvMobProg({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final themeModel = Provider.of<ThemeModel>(context);
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: ScreenUtilInit(
+        designSize: const Size(412, 715),
+        minTextAdapt: true,
+        splitScreenMode: true,
+        builder: (build, child) {
+          final themeModel = build.watch<ThemeProvider>();
 
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: themeModel.isDark
-          ? ThemeData.dark()
-          : ThemeData.light(),
-      home: const MyHomePage(),
-    );
-  }
-}
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
 
-/// this demonstrates Ephemeral State using setState().
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-/// Stores the counter locally.
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  /// Increments the counter.
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Ephemeral State Example"),
-      ),
-
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-
-            const Text(
-              "You have pushed the button this many times:",
+            // Poppins is used throughout the light theme.
+            theme: ThemeData(
+              brightness: Brightness.light,
+              fontFamily: 'Poppins',
             ),
 
-            Text(
-              "$_counter",
-              style: Theme.of(context).textTheme.headlineMedium,
+            // Poppins is used throughout the dark theme.
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              fontFamily: 'Poppins',
             ),
 
-            const SizedBox(height: 25),
-
-            ElevatedButton(
-              child: const Text("Go to Theme Settings"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ThemeScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: "Increment",
-        child: const Icon(Icons.add),
+            themeMode: themeModel.isDark
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            title: 'E-Commerce App',
+            initialRoute: '/home',
+            routes: {
+              '/home': (context) => const HomeScreen(),
+              '/settings': (context) => const SettingsScreen(),
+            },
+          );
+        },
       ),
     );
   }
