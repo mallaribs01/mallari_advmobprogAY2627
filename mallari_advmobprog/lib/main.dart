@@ -15,9 +15,9 @@ import 'providers/theme_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setPreferredOrientations(
-    [DeviceOrientation.portraitUp],
-  ).then((_) async {
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]).then((
+    _,
+  ) async {
     await dotenv.load(fileName: 'assets/.env');
     runApp(const MallariAdvMobProg());
   });
@@ -52,9 +52,7 @@ class MallariAdvMobProg extends StatelessWidget {
               fontFamily: 'Poppins',
             ),
 
-            themeMode: themeModel.isDark
-                ? ThemeMode.dark
-                : ThemeMode.light,
+            themeMode: themeModel.isDark ? ThemeMode.dark : ThemeMode.light,
             title: 'E-Commerce App',
             initialRoute: '/home',
             routes: {
