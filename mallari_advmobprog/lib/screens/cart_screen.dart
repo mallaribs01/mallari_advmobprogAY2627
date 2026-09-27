@@ -7,7 +7,12 @@ import '../widgets/custom_text.dart';
 import '../screens/details_screen.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final int userId;
+
+  const CartScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -16,9 +21,6 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   late final Future<List<Cart>> _cartsFuture;
 
-  // Loads the cart for the selected user.
-  final int userId = 1;
-
   // Stores the current quantity of each product.
   final Map<int, int> _quantities = {};
 
@@ -26,8 +28,8 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
 
-    // Gets the user's cart from the API.
-    _cartsFuture = CartService().getCartsByUser(userId);
+    // Gets the logged-in user's cart from the API.
+    _cartsFuture = CartService().getCartsByUser(widget.userId);
   }
 
   @override
@@ -38,7 +40,9 @@ class _CartScreenState extends State<CartScreen> {
         builder: (context, snapshot) {
           // Shows loading indicator while the API is loading.
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           // Shows an error message if the API fails.
@@ -56,7 +60,10 @@ class _CartScreenState extends State<CartScreen> {
           // Shows a message when no cart is available.
           if (carts.isEmpty) {
             return Center(
-              child: CustomText(text: 'No cart found.', fontSize: 14.sp),
+              child: CustomText(
+                text: 'No cart found.',
+                fontSize: 14.sp,
+              ),
             );
           }
 
@@ -78,12 +85,20 @@ class _CartScreenState extends State<CartScreen> {
               // Displays the cart products.
               Expanded(
                 child: ListView.builder(
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
+                  padding: EdgeInsets.fromLTRB(
+                    16.w,
+                    16.h,
+                    16.w,
+                    8.h,
+                  ),
                   itemCount: cart.products.length,
                   itemBuilder: (context, index) {
                     final item = cart.products[index];
 
-                    return _buildCartItem(context, item);
+                    return _buildCartItem(
+                      context,
+                      item,
+                    );
                   },
                 ),
               ),
@@ -98,8 +113,12 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // Builds one product card in the cart.
-  Widget _buildCartItem(BuildContext context, CartProduct item) {
-    final quantity = _quantities[item.id] ?? item.quantity;
+  Widget _buildCartItem(
+    BuildContext context,
+    CartProduct item,
+  ) {
+    final quantity =
+        _quantities[item.id] ?? item.quantity;
 
     // Calculates the total for this product.
     final itemTotal = item.price * quantity;
@@ -110,7 +129,10 @@ class _CartScreenState extends State<CartScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductDetailsScreen(productId: item.id),
+            builder: (context) => ProductDetailsScreen(
+              productId: item.id,
+              userId: widget.userId,
+            ),
           ),
         );
       },
@@ -122,7 +144,7 @@ class _CartScreenState extends State<CartScreen> {
           borderRadius: BorderRadius.circular(14.r),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8.r,
               offset: Offset(0, 2.h),
             ),
@@ -138,8 +160,11 @@ class _CartScreenState extends State<CartScreen> {
               child: Image.network(
                 item.thumbnail,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) {
-                  return Icon(Icons.image, size: 40.sp);
+                errorBuilder: (_, _, _) {
+                  return Icon(
+                    Icons.image,
+                    size: 40.sp,
+                  );
                 },
               ),
             ),
@@ -162,7 +187,8 @@ class _CartScreenState extends State<CartScreen> {
                   SizedBox(height: 5.h),
 
                   CustomText(
-                    text: '\$${item.price.toStringAsFixed(2)}',
+                    text:
+                        '\$${item.price.toStringAsFixed(2)}',
                     fontSize: 13.sp,
                     fontWeight: FontWeight.bold,
                   ),
@@ -183,23 +209,26 @@ class _CartScreenState extends State<CartScreen> {
             // Quantity controls.
             Column(
               children: [
-                // Increases the product quantity.
+                // Increase quantity.
                 SizedBox(
                   width: 32.w,
                   height: 32.h,
                   child: ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        _quantities[item.id] = quantity + 1;
+                        _quantities[item.id] =
+                            quantity + 1;
                       });
                     },
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      backgroundColor: const Color(0xFFFFC107),
+                      backgroundColor:
+                          const Color(0xFFFFC107),
                       foregroundColor: Colors.black,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                        borderRadius:
+                            BorderRadius.circular(8.r),
                       ),
                     ),
                     child: const Text(
@@ -214,7 +243,7 @@ class _CartScreenState extends State<CartScreen> {
 
                 SizedBox(height: 4.h),
 
-                // Displays the current quantity.
+                // Current quantity.
                 CustomText(
                   text: '$quantity',
                   fontSize: 12.sp,
@@ -223,7 +252,7 @@ class _CartScreenState extends State<CartScreen> {
 
                 SizedBox(height: 4.h),
 
-                // Decreases the product quantity.
+                // Decrease quantity.
                 SizedBox(
                   width: 32.w,
                   height: 32.h,
@@ -231,18 +260,22 @@ class _CartScreenState extends State<CartScreen> {
                     onPressed: quantity > 1
                         ? () {
                             setState(() {
-                              _quantities[item.id] = quantity - 1;
+                              _quantities[item.id] =
+                                  quantity - 1;
                             });
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      backgroundColor: const Color(0xFFE9E9EF),
+                      backgroundColor:
+                          const Color(0xFFE9E9EF),
                       foregroundColor: Colors.black,
-                      disabledBackgroundColor: const Color(0xFFE9E9EF),
+                      disabledBackgroundColor:
+                          const Color(0xFFE9E9EF),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                        borderRadius:
+                            BorderRadius.circular(8.r),
                       ),
                     ),
                     child: const Text(
@@ -267,7 +300,9 @@ class _CartScreenState extends State<CartScreen> {
     double subtotal = 0;
 
     for (final item in cart.products) {
-      final quantity = _quantities[item.id] ?? item.quantity;
+      final quantity =
+          _quantities[item.id] ?? item.quantity;
+
       subtotal += item.price * quantity;
     }
 
@@ -277,17 +312,27 @@ class _CartScreenState extends State<CartScreen> {
   // Builds the subtotal and confirmation button.
   Widget _buildCartSummary(double subtotal) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
+      padding: EdgeInsets.fromLTRB(
+        16.w,
+        8.h,
+        16.w,
+        12.h,
+      ),
       color: const Color(0xFFF9F5FC),
       child: Column(
         children: [
           // Displays the updated subtotal.
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
             children: [
-              CustomText(text: 'Subtotal:', fontSize: 11.sp),
               CustomText(
-                text: '\$${subtotal.toStringAsFixed(2)}',
+                text: 'Subtotal:',
+                fontSize: 11.sp,
+              ),
+              CustomText(
+                text:
+                    '\$${subtotal.toStringAsFixed(2)}',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),
@@ -298,9 +343,13 @@ class _CartScreenState extends State<CartScreen> {
 
           // Displays the delivery fee.
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
             children: [
-              CustomText(text: 'Delivery Fee:', fontSize: 11.sp),
+              CustomText(
+                text: 'Delivery Fee:',
+                fontSize: 11.sp,
+              ),
               CustomText(
                 text: '\$0.00',
                 fontSize: 12.sp,
@@ -318,15 +367,21 @@ class _CartScreenState extends State<CartScreen> {
             child: ElevatedButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Order confirmed!')),
+                  const SnackBar(
+                    content: Text(
+                      'Order confirmed!',
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC107),
+                backgroundColor:
+                    const Color(0xFFFFC107),
                 foregroundColor: Colors.black,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
+                  borderRadius:
+                      BorderRadius.circular(10.r),
                 ),
               ),
               child: CustomText(

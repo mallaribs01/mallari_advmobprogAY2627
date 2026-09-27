@@ -10,11 +10,16 @@ import '../services/product_service.dart';
 // widgets
 import '../widgets/custom_text.dart';
 
-//screens
+// screens
 import 'details_screen.dart';
 
 class ProductScreen extends StatefulWidget {
-  const ProductScreen({super.key});
+  final int userId;
+
+  const ProductScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<ProductScreen> createState() => _ProductScreenState();
@@ -32,33 +37,44 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   void initState() {
     super.initState();
-    _productsFuture = ProductService().getAllProducts();
+
+    _productsFuture =
+        ProductService().getAllProducts();
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16.w,
+          vertical: 16.h,
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
-            // ENHANCEMENT 1: Search products by title.
+            // Search products by title.
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search products',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon:
+                    const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius:
+                      BorderRadius.circular(12.r),
                 ),
               ),
               onChanged: (value) {
                 // Filters products based on the search text.
                 setState(() {
-                  _filteredProducts = _products.where((product) {
-                    return product.title.toLowerCase().contains(
-                      value.toLowerCase(),
-                    );
+                  _filteredProducts =
+                      _products.where((product) {
+                    return product.title
+                        .toLowerCase()
+                        .contains(
+                          value.toLowerCase(),
+                        );
                   }).toList();
                 });
               },
@@ -69,11 +85,13 @@ class _ProductScreenState extends State<ProductScreen> {
             FutureBuilder<List<Product>>(
               future: _productsFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
                   return Center(
                     child: Padding(
                       padding: EdgeInsets.all(32.r),
-                      child: const CircularProgressIndicator(),
+                      child:
+                          const CircularProgressIndicator(),
                     ),
                   );
                 }
@@ -81,13 +99,15 @@ class _ProductScreenState extends State<ProductScreen> {
                 if (snapshot.hasError) {
                   return Center(
                     child: CustomText(
-                      text: 'Error: ${snapshot.error}',
+                      text:
+                          'Error: ${snapshot.error}',
                       fontSize: 14.sp,
                     ),
                   );
                 }
 
-                final products = snapshot.data ?? [];
+                final products =
+                    snapshot.data ?? [];
 
                 if (products.isEmpty) {
                   return Center(
@@ -106,12 +126,14 @@ class _ProductScreenState extends State<ProductScreen> {
 
                 return GridView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics:
+                      const NeverScrollableScrollPhysics(),
 
-                  // Displays the filtered products.
-                  itemCount: _filteredProducts.length,
+                  itemCount:
+                      _filteredProducts.length,
 
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 10.w,
                     mainAxisSpacing: 10.h,
@@ -119,56 +141,81 @@ class _ProductScreenState extends State<ProductScreen> {
                   ),
 
                   itemBuilder: (context, index) {
-                    // Gets the product from the filtered list.
-                    final product = _filteredProducts[index];
+                    final product =
+                        _filteredProducts[index];
 
                     return GestureDetector(
-                      // ENHANCEMENT 2: Opens the details page when a product is clicked.
+                      // Opens the details page.
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                ProductDetailsScreen(product: product),
+                                ProductDetailsScreen(
+                              product: product,
+                              userId: widget.userId,
+                            ),
                           ),
                         );
                       },
                       child: Card(
                         elevation: 2,
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
+                        clipBehavior:
+                            Clip.antiAlias,
+                        shape:
+                            RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(
+                            12.r,
+                          ),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Image.network(
                                 product.thumbnail,
                                 fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (_, __, ___) =>
-                                    Icon(Icons.image, size: 24.sp),
+                                width:
+                                    double.infinity,
+                                errorBuilder:
+                                    (_, _, _) =>
+                                        Icon(
+                                  Icons.image,
+                                  size: 24.sp,
+                                ),
                               ),
                             ),
+
                             Padding(
-                              padding: EdgeInsets.all(8.r),
+                              padding:
+                                  EdgeInsets.all(8.r),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
                                 children: [
                                   CustomText(
-                                    text: product.title,
+                                    text:
+                                        product.title,
                                     fontSize: 14.sp,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight:
+                                        FontWeight.bold,
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    overflow:
+                                        TextOverflow
+                                            .ellipsis,
                                   ),
+
                                   SizedBox(height: 4.h),
+
                                   CustomText(
                                     text:
                                         '\$${product.price.toStringAsFixed(2)}',
                                     fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight:
+                                        FontWeight.w600,
                                   ),
                                 ],
                               ),

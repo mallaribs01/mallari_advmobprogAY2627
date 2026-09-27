@@ -1,26 +1,20 @@
-// packages
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
-// screens
+import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/signin_screen.dart';
+import 'screens/splash_screen.dart';
 
-// providers
-import 'providers/theme_provider.dart';
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]).then((
-    _,
-  ) async {
-    await dotenv.load(fileName: 'assets/.env');
-    runApp(const MallariAdvMobProg());
-  });
+  await dotenv.load(fileName: 'assets/.env');
+
+  runApp(const MallariAdvMobProg());
 }
 
 class MallariAdvMobProg extends StatelessWidget {
@@ -34,30 +28,59 @@ class MallariAdvMobProg extends StatelessWidget {
         designSize: const Size(412, 715),
         minTextAdapt: true,
         splitScreenMode: true,
-        builder: (build, child) {
-          final themeModel = build.watch<ThemeProvider>();
+        builder: (context, child) {
+          return Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'Mallari Mall',
 
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
+                themeMode: themeProvider.isDark
+                    ? ThemeMode.dark
+                    : ThemeMode.light,
 
-            // Poppins is used throughout the light theme.
-            theme: ThemeData(
-              brightness: Brightness.light,
-              fontFamily: 'Poppins',
-            ),
+                theme: ThemeData(
+                  brightness: Brightness.light,
+                  fontFamily: 'Poppins',
+                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+                  useMaterial3: true,
+                ),
 
-            // Poppins is used throughout the dark theme.
-            darkTheme: ThemeData(
-              brightness: Brightness.dark,
-              fontFamily: 'Poppins',
-            ),
+                darkTheme: ThemeData(
+                  brightness: Brightness.dark,
+                  fontFamily: 'Poppins',
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: Colors.blue,
+                    brightness: Brightness.dark,
+                  ),
+                  useMaterial3: true,
+                ),
 
-            themeMode: themeModel.isDark ? ThemeMode.dark : ThemeMode.light,
-            title: 'E-Commerce App',
-            initialRoute: '/home',
-            routes: {
-              '/home': (context) => const HomeScreen(),
-              '/settings': (context) => const SettingsScreen(),
+                // Lab Activity 4 starts with Splash Screen
+                initialRoute: '/splash',
+
+                routes: {
+                  '/splash': (context) => const SplashScreen(),
+
+                  '/signin': (context) => const SignInScreen(),
+
+                  '/home': (context) {
+                    final arguments = ModalRoute.of(
+                      context,
+                    )?.settings.arguments;
+
+                    Map<String, dynamic>? userData;
+
+                    if (arguments is Map<String, dynamic>) {
+                      userData = arguments;
+                    }
+
+                    return HomeScreen(userData: userData);
+                  },
+
+                  '/settings': (context) => const SettingsScreen(),
+                },
+              );
             },
           );
         },

@@ -9,8 +9,14 @@ import '../widgets/custom_text.dart';
 class ProductDetailsScreen extends StatelessWidget {
   final Product? product;
   final int? productId;
+  final int userId;
 
-  const ProductDetailsScreen({super.key, this.product, this.productId});
+  const ProductDetailsScreen({
+    super.key,
+    this.product,
+    this.productId,
+    this.userId = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +82,7 @@ class ProductDetailsScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 250.h,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => SizedBox(
+                errorBuilder: (_, _, _) => SizedBox(
                   height: 250.h,
                   child: Icon(Icons.image, size: 50.sp),
                 ),
@@ -121,14 +127,14 @@ class ProductDetailsScreen extends StatelessWidget {
 
             SizedBox(height: 20.h),
 
-            // ENHANCEMENT 3: Adds the product to the user's cart.
+            // ENHANCEMENT 3: Adds the product to the logged-in user's cart.
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
                   try {
                     await CartService().addToCart(
-                      userId: 1,
+                      userId: userId,
                       productId: product.id,
                       quantity: 1,
                     );
