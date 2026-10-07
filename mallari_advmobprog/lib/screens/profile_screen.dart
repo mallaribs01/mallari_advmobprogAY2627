@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -8,9 +9,6 @@ import '../services/user_service.dart';
 import '../widgets/custom_text.dart';
 import 'cart_screen.dart';
 
-/// Lab Activity 4 - Enhancement 3
-/// The ProfileScreen gets the saved User model from UserService and renders the user's information.
-/// The same userId is used when requesting the user's cart from CartService.
 class ProfileScreen extends StatefulWidget {
   final int userId;
 
@@ -23,7 +21,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
 
-  late Future<User?> _userFuture;
+  late Future<_ProfileData> _profileFuture;
   late Future<int> _cartCountFuture;
 
   @override
@@ -33,27 +31,351 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _loadData() {
-    _userFuture = _userService.getUser();
+    _profileFuture = _loadProfile();
     _cartCountFuture = _getCartCount();
   }
 
-  Future<int> _getCartCount() async {
-    final carts = await CartService().getCartsByUser(widget.userId);
+  // ============================================================
+  // LOAD PROFILE
+  // ============================================================
 
-    if (carts.isEmpty) {
-      return 0;
+  Future<_ProfileData> _loadProfile() async {
+    final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+
+    // Firebase account
+    if (firebaseUser != null) {
+      // Reload Firebase user so displayName is up to date.
+      await firebaseUser.reload();
+
+      final updatedFirebaseUser =
+          firebase_auth.FirebaseAuth.instance.currentUser;
+
+      final firebaseData = await _userService.getFirebaseUserData();
+
+      return _ProfileData(
+        type: LoginType.firebase,
+        firebaseUser: updatedFirebaseUser,
+        firebaseData: firebaseData,
+        dummyUser: null,
+      );
     }
 
-    return carts.first.totalQuantity;
+    // DummyJSON account
+    final dummyUser = await _userService.getUser();
+
+    return _ProfileData(
+      type: LoginType.dummyJson,
+      firebaseUser: null,
+      firebaseData: {},
+      dummyUser: dummyUser,
+    );
+  }
+
+  // ============================================================
+  // CART
+  // ============================================================
+
+  Future<int> _getCartCount() async {
+    try {
+      final carts = await CartService().getCartsByUser(widget.userId);
+
+      if (carts.isEmpty) {
+        return 0;
+      }
+
+      return carts.first.totalQuantity;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> _refresh() async {
-    setState(_loadData);
+    if (!mounted) return;
 
-    await Future.wait([_userFuture, _cartCountFuture]);
+    setState(() {
+      _loadData();
+    });
+
+    await Future.wait([_profileFuture, _cartCountFuture]);
   }
 
-  // Logout the current user and return to the Sign In screen.
+  // ============================================================
+  // UPDATE USERNAME
+  // ============================================================
+
+  Future<void> _showUpdateUsernameDialog(String currentUsername) async {
+    final controller = TextEditingController(text: currentUsername);
+
+    try {
+      final newUsername = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Update Username'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: 'New Username',
+                hintText: 'Enter your new username',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+
+                  if (value.isEmpty) {
+                    return;
+                  }
+
+                  Navigator.of(dialogContext).pop(value);
+                },
+                child: const Text('Update'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted) return;
+
+      if (newUsername == null ||
+          newUsername.trim().isEmpty ||
+          newUsername.trim() == currentUsername.trim()) {
+        return;
+      }
+
+      // Update Firebase Authentication
+      // and Firestore.
+      await _userService.updateUsername(newUsername.trim());
+
+      if (!mounted) return;
+
+      // Reload the profile with the updated username.
+      setState(() {
+        _loadData();
+      });
+
+      // Wait for the new profile data to finish loading.
+      await _profileFuture;
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username updated successfully!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to update username: $e')));
+    } finally {
+      // Dispose only after the dialog and update process
+      // have completely finished.
+      controller.dispose();
+    }
+  }
+
+  // ============================================================
+  // CHANGE PASSWORD
+  // ============================================================
+
+  Future<void> _showChangePasswordDialog() async {
+    final currentPasswordController = TextEditingController();
+
+    final newPasswordController = TextEditingController();
+
+    final confirmPasswordController = TextEditingController();
+
+    try {
+      final passwordData = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Change Password'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('For security, enter your current password.'),
+
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: currentPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Current Password',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'New Password',
+                      prefixIcon: Icon(Icons.lock),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm New Password',
+                      prefixIcon: Icon(Icons.lock),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop({
+                    'currentPassword': currentPasswordController.text,
+                    'newPassword': newPasswordController.text,
+                    'confirmPassword': confirmPasswordController.text,
+                  });
+                },
+                child: const Text('Change'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted) return;
+
+      if (passwordData == null) {
+        return;
+      }
+
+      final currentPassword = passwordData['currentPassword'] ?? '';
+
+      final newPassword = passwordData['newPassword'] ?? '';
+
+      final confirmPassword = passwordData['confirmPassword'] ?? '';
+
+      if (currentPassword.isEmpty ||
+          newPassword.isEmpty ||
+          confirmPassword.isEmpty) {
+        _showMessage('Please complete all password fields.');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        _showMessage('New password must be at least 6 characters.');
+        return;
+      }
+
+      if (newPassword != confirmPassword) {
+        _showMessage('New passwords do not match.');
+        return;
+      }
+
+      await _userService.resetPasswordFromCurrentPassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      if (!mounted) return;
+
+      _showMessage('Password changed successfully!');
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage('Unable to change password: $e');
+    } finally {
+      // Dispose only after the dialog has completely
+      // finished using the controllers.
+      currentPasswordController.dispose();
+      newPasswordController.dispose();
+      confirmPasswordController.dispose();
+    }
+  }
+
+  // ============================================================
+  // DELETE ACCOUNT
+  // ============================================================
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Account'),
+          content: const Text(
+            'Are you sure you want to permanently delete '
+            'your Firebase account? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _userService.deleteAccount();
+
+      if (!mounted) return;
+
+      Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage('Unable to delete account: $e');
+    }
+  }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -64,13 +386,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.of(dialogContext).pop(false);
               },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.of(dialogContext).pop(true);
               },
               child: const Text('Logout'),
             ),
@@ -84,28 +406,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     try {
-      await _userService.logout();
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+
+      if (firebaseUser != null) {
+        await _userService.signOut();
+      } else {
+        await _userService.logout();
+      }
 
       if (!mounted) return;
 
-      // Remove all previous screens and return to Sign In.
       Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Logout failed: $e')));
+      _showMessage('Logout failed: $e');
     }
   }
+
+  // ============================================================
+  // MESSAGE
+  // ============================================================
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _refresh,
-        child: FutureBuilder<User?>(
-          future: _userFuture,
+        child: FutureBuilder<_ProfileData>(
+          future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -117,19 +458,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'Unable to load profile.\n'
                     '${snapshot.error}',
                 onRetry: () {
-                  setState(_loadData);
+                  setState(() {
+                    _loadData();
+                  });
                 },
               );
             }
 
-            final user = snapshot.data;
+            final profile = snapshot.data;
 
-            if (user == null) {
+            if (profile == null) {
               return const Center(
-                child: CustomText(
-                  text: 'No saved user data found.',
-                  fontSize: 14,
-                ),
+                child: CustomText(text: 'No user data found.', fontSize: 14),
               );
             }
 
@@ -137,22 +477,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(18.w, 18.h, 18.w, 28.h),
               children: [
-                // User profile header.
-                _buildProfileHeader(user),
+                _buildProfileHeader(profile),
 
                 SizedBox(height: 18.h),
 
-                // User account information.
-                _buildInformationCard(user),
+                _buildInformationCard(profile),
 
                 SizedBox(height: 16.h),
 
-                // Cart information based on user ID.
-                _buildCartCard(user.id),
+                _buildAccountActions(profile),
+
+                SizedBox(height: 16.h),
+
+                _buildCartCard(widget.userId),
 
                 SizedBox(height: 24.h),
 
-                // Logout button.
                 _buildLogoutButton(),
               ],
             );
@@ -162,8 +502,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(User user) {
-    final fullName = '${user.firstName} ${user.lastName}'.trim();
+  // ============================================================
+  // PROFILE HEADER
+  // ============================================================
+
+  Widget _buildProfileHeader(_ProfileData profile) {
+    String name;
+    String username;
+    String email;
+    String image = '';
+
+    if (profile.type == LoginType.firebase) {
+      final firebaseUser = profile.firebaseUser!;
+
+      final data = profile.firebaseData;
+
+      name =
+          '${data['firstName'] ?? ''} '
+                  '${data['lastName'] ?? ''}'
+              .trim();
+
+      username = data['username']?.toString() ?? firebaseUser.displayName ?? '';
+
+      email = firebaseUser.email ?? '';
+    } else {
+      final user = profile.dummyUser!;
+
+      name = '${user.firstName} ${user.lastName}'.trim();
+
+      username = user.username;
+      email = user.email;
+      image = user.image;
+    }
 
     return Container(
       padding: EdgeInsets.all(20.r),
@@ -184,9 +554,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 46.r,
             backgroundColor: Colors.white,
             child: ClipOval(
-              child: user.image.isNotEmpty
+              child: image.isNotEmpty
                   ? Image.network(
-                      user.image,
+                      image,
                       width: 88.r,
                       height: 88.r,
                       fit: BoxFit.cover,
@@ -209,7 +579,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 12.h),
 
           Text(
-            fullName.isEmpty ? user.username : fullName,
+            name.isEmpty ? username : name,
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 21.sp,
@@ -222,7 +592,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 4.h),
 
           Text(
-            '@${user.username}',
+            username.isEmpty ? email : '@$username',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 12.sp,
@@ -235,10 +605,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInformationCard(User user) {
+  // ============================================================
+  // INFORMATION CARD
+  // ============================================================
+
+  Widget _buildInformationCard(_ProfileData profile) {
+    if (profile.type == LoginType.firebase) {
+      final data = profile.firebaseData;
+      final user = profile.firebaseUser!;
+
+      return _SectionCard(
+        title: 'Firebase Account',
+        icon: Icons.local_fire_department,
+        children: [
+          _InfoRow(icon: Icons.badge_outlined, label: 'UID', value: user.uid),
+
+          _InfoRow(
+            icon: Icons.person_outline,
+            label: 'Username',
+            value:
+                data['username']?.toString() ??
+                user.displayName ??
+                'Not provided',
+          ),
+
+          _InfoRow(
+            icon: Icons.email_outlined,
+            label: 'Email',
+            value: user.email ?? 'Not provided',
+          ),
+
+          _InfoRow(
+            icon: Icons.person,
+            label: 'Name',
+            value:
+                '${data['firstName'] ?? ''} '
+                        '${data['lastName'] ?? ''}'
+                    .trim(),
+          ),
+
+          _InfoRow(
+            icon: Icons.cake_outlined,
+            label: 'Age',
+            value: data['age']?.toString() ?? 'Not provided',
+          ),
+
+          _InfoRow(
+            icon: Icons.phone_outlined,
+            label: 'Contact',
+            value: data['contactNo']?.toString() ?? 'Not provided',
+          ),
+        ],
+      );
+    }
+
+    final user = profile.dummyUser!;
+
     return _SectionCard(
-      title: 'Account Information',
-      icon: Icons.person_outline,
+      title: 'DummyJSON Account',
+      icon: Icons.api,
       children: [
         _InfoRow(
           icon: Icons.badge_outlined,
@@ -267,6 +692,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ============================================================
+  // ACCOUNT ACTIONS
+  // ============================================================
+
+  Widget _buildAccountActions(_ProfileData profile) {
+    if (profile.type != LoginType.firebase) {
+      return const SizedBox.shrink();
+    }
+
+    final data = profile.firebaseData;
+
+    final username =
+        data['username']?.toString() ?? profile.firebaseUser?.displayName ?? '';
+
+    return _SectionCard(
+      title: 'Account Settings',
+      icon: Icons.settings_outlined,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.edit_outlined),
+          title: const Text('Update Username'),
+          subtitle: const Text('Change your Firebase username'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            _showUpdateUsernameDialog(username);
+          },
+        ),
+
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.lock_reset),
+          title: const Text('Change Password'),
+          subtitle: const Text('Update your Firebase password'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _showChangePasswordDialog,
+        ),
+
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            Icons.delete_forever,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(
+            'Delete Account',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: const Text('Permanently delete your Firebase account'),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          onTap: _deleteAccount,
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // CART CARD
+  // ============================================================
+
   Widget _buildCartCard(int userId) {
     return _SectionCard(
       title: 'My Cart',
@@ -281,14 +773,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: LinearProgressIndicator(),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return _InfoRow(
-                icon: Icons.error_outline,
-                label: 'Cart',
-                value: 'Unable to load cart',
               );
             }
 
@@ -353,6 +837,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ============================================================
+  // LOGOUT BUTTON
+  // ============================================================
+
   Widget _buildLogoutButton() {
     return SizedBox(
       width: double.infinity,
@@ -375,6 +863,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+// ================================================================
+// PROFILE DATA
+// ================================================================
+
+enum LoginType { firebase, dummyJson }
+
+class _ProfileData {
+  final LoginType type;
+  final firebase_auth.User? firebaseUser;
+  final Map<String, dynamic> firebaseData;
+  final User? dummyUser;
+
+  _ProfileData({
+    required this.type,
+    required this.firebaseUser,
+    required this.firebaseData,
+    required this.dummyUser,
+  });
+}
+
+// ================================================================
+// SECTION CARD
+// ================================================================
 
 class _SectionCard extends StatelessWidget {
   final String title;
@@ -405,9 +917,7 @@ class _SectionCard extends StatelessWidget {
             Row(
               children: [
                 Icon(icon, size: 21.sp),
-
                 SizedBox(width: 8.w),
-
                 CustomText(
                   text: title,
                   fontSize: 15.sp,
@@ -425,6 +935,10 @@ class _SectionCard extends StatelessWidget {
     );
   }
 }
+
+// ================================================================
+// INFO ROW
+// ================================================================
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
@@ -460,7 +974,7 @@ class _InfoRow extends StatelessWidget {
 
           Expanded(
             child: CustomText(
-              text: value,
+              text: value.isEmpty ? 'Not provided' : value,
               fontSize: 11.sp,
               textAlign: TextAlign.end,
             ),
@@ -470,6 +984,10 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+// ================================================================
+// ERROR VIEW
+// ================================================================
 
 class _ErrorView extends StatelessWidget {
   final String message;

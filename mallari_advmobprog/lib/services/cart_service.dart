@@ -48,37 +48,7 @@ class CartService {
           .toList();
 
       // Adds locally added products to the user's cart.
-      if (carts.isNotEmpty && _localCartProducts.isNotEmpty) {
-        final cart = carts.first;
-
-        for (final localProduct in _localCartProducts) {
-          final existingIndex = cart.products.indexWhere(
-            (product) => product.id == localProduct.id,
-          );
-
-          if (existingIndex >= 0) {
-            final existing = cart.products[existingIndex];
-
-            cart.products[existingIndex] = CartProduct(
-              id: existing.id,
-              title: existing.title,
-              price: existing.price,
-              quantity: existing.quantity +
-                  localProduct.quantity,
-              total: existing.total +
-                  localProduct.total,
-              discountPercentage:
-                  existing.discountPercentage,
-              discountedTotal:
-                  existing.discountedTotal +
-                      localProduct.discountedTotal,
-              thumbnail: existing.thumbnail,
-            );
-          } else {
-            cart.products.add(localProduct);
-          }
-        }
-      }
+      
 
       return carts;
     } else {

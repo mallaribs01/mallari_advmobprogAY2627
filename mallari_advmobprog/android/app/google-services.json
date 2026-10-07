@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "764780476976",
+    "project_id": "advmobprog-firebase-ac56d",
+    "storage_bucket": "advmobprog-firebase-ac56d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764780476976:android:af706c6d502b7419c00bf5",
+        "android_client_info": {
+          "package_name": "com.example.mallari_advmobprog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyMCFtw9z8Da7jFv5ZUosV2RrOIuWIKO8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -37,13 +37,17 @@ class _SignInScreenState extends State<SignInScreen> {
       _isLoading = true;
     });
 
-    try {
-      final response = await userService.loginUser(
-        _usernameController.text.trim(),
-        _passwordController.text,
-      );
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
 
-      // Save user data to SharedPreferences
+    // ============================================================
+    // 1. TRY DUMMYJSON LOGIN FIRST
+    // ============================================================
+
+    try {
+      final response = await userService.loginUser(username, password);
+
+      // Save DummyJSON user data
       await userService.saveUserData(response);
 
       if (!mounted) return;
@@ -54,16 +58,51 @@ class _SignInScreenState extends State<SignInScreen> {
 
       // Navigate to Home Screen
       Navigator.pushReplacementNamed(context, '/home', arguments: response);
-    } catch (e) {
+
+      return;
+    } catch (_) {
+      // DummyJSON login failed.
+      // Continue and try Firebase.
+    }
+
+    // ============================================================
+    // 2. TRY FIREBASE LOGIN
+    // ============================================================
+
+    try {
+      final firebaseUser = await userService.signInWithUsernameOrEmail(
+        username,
+        password,
+      );
+
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
+      // Navigate to Home Screen
+      Navigator.pushReplacementNamed(
         context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: ${e.toString()}')));
+        '/home',
+        arguments: {
+          'id': 1,
+          'username': firebaseUser?.displayName ?? username,
+          'email': firebaseUser?.email ?? '',
+          'firstName': '',
+          'lastName': '',
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid username/email or password.')),
+      );
     }
   }
 
@@ -77,14 +116,13 @@ class _SignInScreenState extends State<SignInScreen> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-
               children: [
                 const SizedBox(height: 30),
 
-                // Enhancement 2: Customized the Sign In's UI by placing the NUBDE Logo.
+                // Enhancement 2: Customized the Sign In's UI
+                // by placing the NUBDE Logo.
                 Center(
                   child: Image.asset(
                     'assets/images/nubdexchange_logo.png',
@@ -119,8 +157,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   controller: _usernameController,
 
                   decoration: InputDecoration(
-                    labelText: 'Username',
-                    hintText: 'Enter your username',
+                    labelText: 'Username or Email Address',
+                    hintText: 'Enter your username or email',
 
                     prefixIcon: const Icon(Icons.person),
 
@@ -206,9 +244,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                 const SizedBox(height: 25),
 
+                // SIGN IN
                 SizedBox(
                   height: 50,
-
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _login,
 
@@ -228,6 +266,21 @@ class _SignInScreenState extends State<SignInScreen> {
                             'SIGN IN',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // SIGN UP
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.pushNamed(context, '/signup');
+                        },
+                  child: const Text(
+                    'NEW MEMBER? CREATE AN ACCOUNT HERE',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

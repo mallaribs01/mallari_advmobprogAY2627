@@ -21,14 +21,15 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   late final Future<List<Cart>> _cartsFuture;
 
-  // Stores the current quantity of each product.
+  // Stores only the temporary quantity changes.
+  // The products themselves remain static from the dummy JSON.
   final Map<int, int> _quantities = {};
 
   @override
   void initState() {
     super.initState();
 
-    // Gets the logged-in user's cart from the API.
+    // Load the static dummy cart for this user.
     _cartsFuture = CartService().getCartsByUser(widget.userId);
   }
 
@@ -38,14 +39,12 @@ class _CartScreenState extends State<CartScreen> {
       child: FutureBuilder<List<Cart>>(
         future: _cartsFuture,
         builder: (context, snapshot) {
-          // Shows loading indicator while the API is loading.
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          // Shows an error message if the API fails.
           if (snapshot.hasError) {
             return Center(
               child: CustomText(
@@ -57,7 +56,6 @@ class _CartScreenState extends State<CartScreen> {
 
           final carts = snapshot.data ?? [];
 
-          // Shows a message when no cart is available.
           if (carts.isEmpty) {
             return Center(
               child: CustomText(
@@ -67,22 +65,20 @@ class _CartScreenState extends State<CartScreen> {
             );
           }
 
-          // Displays the user's first cart.
+          // Use the first static cart from the dummy JSON.
           final cart = carts.first;
 
-          // Saves the original quantities the first time the cart loads.
+          // Initialize quantities only once.
           if (_quantities.isEmpty) {
             for (final item in cart.products) {
               _quantities[item.id] = item.quantity;
             }
           }
 
-          // Calculates the subtotal using the current quantities.
           final subtotal = _calculateSubtotal(cart);
 
           return Column(
             children: [
-              // Displays the cart products.
               Expanded(
                 child: ListView.builder(
                   padding: EdgeInsets.fromLTRB(
@@ -103,7 +99,6 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
 
-              // Displays the cart summary.
               _buildCartSummary(subtotal),
             ],
           );
@@ -112,7 +107,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Builds one product card in the cart.
   Widget _buildCartItem(
     BuildContext context,
     CartProduct item,
@@ -120,12 +114,12 @@ class _CartScreenState extends State<CartScreen> {
     final quantity =
         _quantities[item.id] ?? item.quantity;
 
-    // Calculates the total for this product.
     final itemTotal = item.price * quantity;
 
     return GestureDetector(
       onTap: () {
-        // Opens the product detail screen.
+        // Viewing the product is allowed.
+        // This does NOT add another product to the cart.
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -153,7 +147,7 @@ class _CartScreenState extends State<CartScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Product image.
+            // Product image
             SizedBox(
               width: 72.w,
               height: 72.h,
@@ -171,7 +165,7 @@ class _CartScreenState extends State<CartScreen> {
 
             SizedBox(width: 12.w),
 
-            // Product information.
+            // Product information
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +191,8 @@ class _CartScreenState extends State<CartScreen> {
 
                   CustomText(
                     text:
-                        '${item.discountPercentage.toStringAsFixed(0)}% off • \$${itemTotal.toStringAsFixed(2)} total',
+                        '${item.discountPercentage.toStringAsFixed(0)}% off • '
+                        '\$${itemTotal.toStringAsFixed(2)} total',
                     fontSize: 10.sp,
                   ),
                 ],
@@ -206,10 +201,10 @@ class _CartScreenState extends State<CartScreen> {
 
             SizedBox(width: 8.w),
 
-            // Quantity controls.
+            // Quantity controls
             Column(
               children: [
-                // Increase quantity.
+                // PLUS
                 SizedBox(
                   width: 32.w,
                   height: 32.h,
@@ -243,7 +238,7 @@ class _CartScreenState extends State<CartScreen> {
 
                 SizedBox(height: 4.h),
 
-                // Current quantity.
+                // QUANTITY
                 CustomText(
                   text: '$quantity',
                   fontSize: 12.sp,
@@ -252,7 +247,7 @@ class _CartScreenState extends State<CartScreen> {
 
                 SizedBox(height: 4.h),
 
-                // Decrease quantity.
+                // MINUS
                 SizedBox(
                   width: 32.w,
                   height: 32.h,
@@ -295,7 +290,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Calculates the subtotal from the current quantities.
+  // Calculates the subtotal based on the CURRENT quantity.
   double _calculateSubtotal(Cart cart) {
     double subtotal = 0;
 
@@ -309,7 +304,6 @@ class _CartScreenState extends State<CartScreen> {
     return subtotal;
   }
 
-  // Builds the subtotal and confirmation button.
   Widget _buildCartSummary(double subtotal) {
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -321,7 +315,6 @@ class _CartScreenState extends State<CartScreen> {
       color: const Color(0xFFF9F5FC),
       child: Column(
         children: [
-          // Displays the updated subtotal.
           Row(
             mainAxisAlignment:
                 MainAxisAlignment.spaceBetween,
@@ -341,7 +334,6 @@ class _CartScreenState extends State<CartScreen> {
 
           SizedBox(height: 8.h),
 
-          // Displays the delivery fee.
           Row(
             mainAxisAlignment:
                 MainAxisAlignment.spaceBetween,
@@ -360,7 +352,6 @@ class _CartScreenState extends State<CartScreen> {
 
           SizedBox(height: 12.h),
 
-          // Confirms the order.
           SizedBox(
             width: double.infinity,
             height: 48.h,
