@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'product_screen.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
 
 import '../widgets/custom_text.dart';
 
@@ -104,9 +105,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ? null
             : FloatingActionButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(
+                  // Lab Activity 6:
+                  // Redirect to the Chat List.
+                  Navigator.push(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Chat')));
+                    MaterialPageRoute(builder: (context) => const ChatScreen()),
+                  );
                 },
                 child: const Icon(Icons.chat),
               ),

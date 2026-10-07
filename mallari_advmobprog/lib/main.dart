@@ -11,6 +11,7 @@ import 'screens/settings_screen.dart';
 import 'screens/signin_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/chat_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,9 @@ Future<void> main() async {
   await dotenv.load(fileName: 'assets/.env');
 
   // Initialize Firebase.
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(const MallariAdvMobProg());
 }
@@ -48,14 +51,18 @@ class MallariAdvMobProg extends StatelessWidget {
                 theme: ThemeData(
                   brightness: Brightness.light,
                   fontFamily: 'Poppins',
-                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+                  colorScheme:
+                      ColorScheme.fromSeed(
+                    seedColor: Colors.blue,
+                  ),
                   useMaterial3: true,
                 ),
 
                 darkTheme: ThemeData(
                   brightness: Brightness.dark,
                   fontFamily: 'Poppins',
-                  colorScheme: ColorScheme.fromSeed(
+                  colorScheme:
+                      ColorScheme.fromSeed(
                     seedColor: Colors.blue,
                     brightness: Brightness.dark,
                   ),
@@ -65,28 +72,39 @@ class MallariAdvMobProg extends StatelessWidget {
                 initialRoute: '/splash',
 
                 routes: {
-                  '/splash': (context) => const SplashScreen(),
+                  '/splash': (context) =>
+                      const SplashScreen(),
 
-                  '/signin': (context) => const SignInScreen(),
+                  '/signin': (context) =>
+                      const SignInScreen(),
 
-                  // NEW: Firebase Sign Up
-                  '/signup': (context) => const SignUpScreen(),
+                  '/signup': (context) =>
+                      const SignUpScreen(),
 
                   '/home': (context) {
-                    final arguments = ModalRoute.of(
-                      context,
-                    )?.settings.arguments;
+                    final arguments =
+                        ModalRoute.of(context)
+                            ?.settings
+                            .arguments;
 
                     Map<String, dynamic>? userData;
 
-                    if (arguments is Map<String, dynamic>) {
+                    if (arguments
+                        is Map<String, dynamic>) {
                       userData = arguments;
                     }
 
-                    return HomeScreen(userData: userData);
+                    return HomeScreen(
+                      userData: userData,
+                    );
                   },
 
-                  '/settings': (context) => const SettingsScreen(),
+                  '/settings': (context) =>
+                      const SettingsScreen(),
+
+                  // LAB 6 - CHAT
+                  '/chat': (context) =>
+                      const ChatScreen(),
                 },
               );
             },
